@@ -1,8 +1,15 @@
 import asyncpg
 import os
-from datetime import date
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+_AQTOBE_TZ = ZoneInfo("Asia/Aqtobe")
+
+
+def _today() -> date:
+    """Return today's date in Aqtobe timezone (matches scheduler timezone)."""
+    return datetime.now(_AQTOBE_TZ).date()
 
 _pool = None
 
@@ -47,6 +54,11 @@ async def init_db():
                 total INT NOT NULL
             )
         """)
+        # Ensure uniqueness so ON CONFLICT DO NOTHING works correctly
+        await conn.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_quiz_results_user_date
+            ON quiz_results (user_id, quiz_date)
+        """)
 
 
 async def register_user(user_id: int, username: str):
@@ -74,7 +86,7 @@ async def get_user(user_id: int):
 async def save_words(user_id: int, words: list[dict]):
     pool = await get_pool()
     async with pool.acquire() as conn:
-        today = date.today()
+        today = _today()
         for w in words:
             await conn.execute("""
                 INSERT INTO words (user_id, word, translation, example, sent_date)
@@ -85,7 +97,7 @@ async def save_words(user_id: int, words: list[dict]):
 async def get_todays_words(user_id: int):
     pool = await get_pool()
     async with pool.acquire() as conn:
-        today = date.today()
+        today = _today()
         return await conn.fetch("""
             SELECT word, translation, example FROM words
             WHERE user_id = $1 AND sent_date = $2
@@ -102,7 +114,7 @@ async def get_all_used_words(user_id: int):
 async def save_quiz_result(user_id: int, score: int, total: int):
     pool = await get_pool()
     async with pool.acquire() as conn:
-        today = date.today()
+        today = _today()
         await conn.execute("""
             INSERT INTO quiz_results (user_id, quiz_date, score, total)
             VALUES ($1, $2, $3, $4)
@@ -113,7 +125,6 @@ async def save_quiz_result(user_id: int, score: int, total: int):
         last = user["last_quiz_date"]
         streak = user["streak"]
 
-        from datetime import timedelta
         if last == today - timedelta(days=1):
             streak += 1
         elif last != today:

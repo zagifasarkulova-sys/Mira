@@ -1,4 +1,3 @@
-import json
 import random
 from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
@@ -41,8 +40,6 @@ async def send_question(bot: Bot, user_id: int):
     buttons = []
     for opt in options:
         is_correct = opt == translation
-        callback_data = json.dumps({"correct": is_correct, "idx": idx})
-        # callback_data max 64 bytes — keep it short
         callback_data = f"quiz:{1 if is_correct else 0}:{idx}"
         buttons.append([InlineKeyboardButton(text=opt, callback_data=callback_data)])
 

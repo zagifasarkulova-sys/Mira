@@ -1,5 +1,6 @@
 import os
 import json
+import random
 import httpx
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -58,7 +59,6 @@ async def generate_quiz_options(word: str, translation: str, all_words: list[dic
     available = [w["translation"] for w in all_words if w["translation"] != correct]
 
     if len(available) >= 3:
-        import random
         wrong = random.sample(available, 3)
     else:
         prompt = f"""Give 3 wrong Russian translations for the English word "{word}" (correct answer is "{translation}").
@@ -69,7 +69,6 @@ Respond ONLY with JSON array of 3 strings, no markdown: ["вариант1", "в�
         text = text.replace("```json", "").replace("```", "").strip()
         wrong = json.loads(text)
 
-    import random
     options = wrong[:3] + [correct]
     random.shuffle(options)
     return options
