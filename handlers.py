@@ -27,9 +27,9 @@ def words_text_with_buttons(words: list) -> tuple[str, InlineKeyboardMarkup]:
     text = "📚 <b>Слова на сегодня:</b>\n\n"
     buttons = []
     for i, w in enumerate(words, 1):
-        word = w["word"] if isinstance(w, dict) else w
-        translation = w["translation"] if isinstance(w, dict) else ""
-        example = w["example"] if isinstance(w, dict) else ""
+        word = w["word"]
+        translation = w["translation"]
+        example = w["example"]
         text += f"{i}. <b>{word}</b> — {translation}\n"
         text += f"   <i>{example}</i>\n\n"
         buttons.append([
@@ -82,6 +82,7 @@ async def btn_new_words(message: Message):
 @router.message(F.text == "🔁 Слова на сегодня")
 async def btn_todays_words(message: Message):
     user_id = message.from_user.id
+    await register_user(user_id, message.from_user.username or "")
     words = await get_todays_words(user_id)
 
     if not words:
@@ -98,6 +99,7 @@ async def btn_todays_words(message: Message):
 @router.message(F.text == "📊 Статистика")
 async def btn_stats(message: Message):
     user_id = message.from_user.id
+    await register_user(user_id, message.from_user.username or "")
     stats = await get_stats(user_id)
 
     streak = stats["streak"]
