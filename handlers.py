@@ -27,9 +27,9 @@ def words_text_with_buttons(words: list) -> tuple[str, InlineKeyboardMarkup]:
     text = "📚 <b>Слова на сегодня:</b>\n\n"
     buttons = []
     for i, w in enumerate(words, 1):
-        word = w["word"] if isinstance(w, dict) else w
-        translation = w["translation"] if isinstance(w, dict) else ""
-        example = w["example"] if isinstance(w, dict) else ""
+        word = w["word"]
+        translation = w["translation"]
+        example = w["example"]
         text += f"{i}. <b>{word}</b> — {translation}\n"
         text += f"   <i>{example}</i>\n\n"
         buttons.append([
@@ -50,7 +50,7 @@ async def cmd_start(message: Message):
     )
 
 
-@router.message(F.text == "📚 Новые слова")
+@router.message(F.text.contains("Новые слова"))
 async def btn_new_words(message: Message):
     user_id = message.from_user.id
     await register_user(user_id, message.from_user.username or "")
@@ -79,47 +79,55 @@ async def btn_new_words(message: Message):
     await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
 
 
-@router.message(F.text == "🔁 Слова на сегодня")
+@router.message(F.text.contains("Слова на сегодня"))
 async def btn_todays_words(message: Message):
     user_id = message.from_user.id
-    words = await get_todays_words(user_id)
+    try:
+        await register_user(user_id, message.from_user.username or "")
+        words = await get_todays_words(user_id)
 
-    if not words:
-        await message.answer(
-            "📭 Ты ещё не запрашивал слова сегодня.\nНажми <b>📚 Новые слова</b>",
-            parse_mode="HTML",
-        )
-        return
+        if not words:
+            await message.answer(
+                "📭 Ты ещё не запрашивал слова сегодня.\nНажми <b>📚 Новые слова</b>",
+                parse_mode="HTML",
+            )
+            return
 
-    text, keyboard = words_text_with_buttons(list(words))
-    await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+        text, keyboard = words_text_with_buttons(list(words))
+        await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
+    except Exception as e:
+        await message.answer(f"❌ Ошибка при загрузке слов: {e}")
 
 
-@router.message(F.text == "📊 Статистика")
+@router.message(F.text.contains("Статистика"))
 async def btn_stats(message: Message):
     user_id = message.from_user.id
-    stats = await get_stats(user_id)
+    try:
+        await register_user(user_id, message.from_user.username or "")
+        stats = await get_stats(user_id)
 
-    streak = stats["streak"]
-    total_words = stats["total_words"]
-    quizzes = stats["quizzes"]
+        streak = stats["streak"]
+        total_words = stats["total_words"]
+        quizzes = stats["quizzes"]
 
-    total_quizzes = len(quizzes)
-    if total_quizzes > 0:
-        avg_score = sum(q["score"] / q["total"] for q in quizzes) / total_quizzes * 100
-        avg_str = f"{avg_score:.0f}%"
-    else:
-        avg_str = "—"
+        total_quizzes = len(quizzes)
+        if total_quizzes > 0:
+            avg_score = sum(q["score"] / q["total"] for q in quizzes) / total_quizzes * 100
+            avg_str = f"{avg_score:.0f}%"
+        else:
+            avg_str = "—"
 
-    streak_emoji = "🔥" if streak >= 3 else "📅"
-    await message.answer(
-        "📊 <b>Твой прогресс:</b>\n\n"
-        f"{streak_emoji} Streak: <b>{streak} дней подряд</b>\n"
-        f"📖 Слов изучено: <b>{total_words}</b>\n"
-        f"🧠 Квизов пройдено: <b>{total_quizzes}</b>\n"
-        f"✅ Средний результат: <b>{avg_str}</b>",
-        parse_mode="HTML",
-    )
+        streak_emoji = "🔥" if streak >= 3 else "📅"
+        await message.answer(
+            "📊 <b>Твой прогресс:</b>\n\n"
+            f"{streak_emoji} Streak: <b>{streak} дней подряд</b>\n"
+            f"📖 Слов изучено: <b>{total_words}</b>\n"
+            f"🧠 Квизов пройдено: <b>{total_quizzes}</b>\n"
+            f"✅ Средний результат: <b>{avg_str}</b>",
+            parse_mode="HTML",
+        )
+    except Exception as e:
+        await message.answer(f"❌ Ошибка при загрузке статистики: {e}")
 
 
 @router.callback_query(F.data.startswith("tts:"))
