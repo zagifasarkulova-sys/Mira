@@ -50,7 +50,7 @@ async def cmd_start(message: Message):
     )
 
 
-@router.message(F.text == "📚 Новые слова")
+@router.message(F.text.contains("Новые слова"))
 async def btn_new_words(message: Message):
     user_id = message.from_user.id
     await register_user(user_id, message.from_user.username or "")
@@ -79,7 +79,7 @@ async def btn_new_words(message: Message):
     await message.answer(text, parse_mode="HTML", reply_markup=keyboard)
 
 
-@router.message(F.text == "🔁 Слова на сегодня")
+@router.message(F.text.contains("Слова на сегодня"))
 async def btn_todays_words(message: Message):
     user_id = message.from_user.id
     try:
@@ -99,7 +99,7 @@ async def btn_todays_words(message: Message):
         await message.answer(f"❌ Ошибка при загрузке слов: {e}")
 
 
-@router.message(F.text == "📊 Статистика")
+@router.message(F.text.contains("Статистика"))
 async def btn_stats(message: Message):
     user_id = message.from_user.id
     try:
