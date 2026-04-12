@@ -1,10 +1,17 @@
 import os
 import json
+import re
 import random
 import httpx
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+
+
+def _extract_json(text: str) -> str:
+    """Strip markdown code fences and return clean JSON string."""
+    text = re.sub(r"```(?:json)?", "", text).replace("```", "").strip()
+    return text
 
 
 async def _ask_groq(prompt: str) -> str:
@@ -50,8 +57,10 @@ Respond ONLY with a valid JSON array, no markdown, no extra text:
 ]"""
 
     text = await _ask_groq(prompt)
-    text = text.replace("```json", "").replace("```", "").strip()
-    return json.loads(text)[:5]
+    try:
+        return json.loads(_extract_json(text))[:5]
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Groq вернул невалидный JSON: {e}\nОтвет: {text[:200]}") from e
 
 
 async def generate_quiz_options(word: str, translation: str, all_words: list[dict]) -> list[str]:
@@ -66,8 +75,10 @@ They should look plausible but be clearly different from the correct answer.
 Respond ONLY with JSON array of 3 strings, no markdown: ["вариант1", "вариант2", "вариант3"]"""
 
         text = await _ask_groq(prompt)
-        text = text.replace("```json", "").replace("```", "").strip()
-        wrong = json.loads(text)
+        try:
+            wrong = json.loads(_extract_json(text))
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Groq вернул невалидный JSON для вариантов: {e}") from e
 
     options = wrong[:3] + [correct]
     random.shuffle(options)

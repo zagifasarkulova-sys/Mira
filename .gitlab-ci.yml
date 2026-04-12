@@ -1,0 +1,64 @@
+stages:
+  - lint
+  - build
+  - deploy
+
+variables:
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  DOCKER_LATEST: $CI_REGISTRY_IMAGE:latest
+
+# ── Lint / import check ────────────────────────────────────────────────────────
+lint:
+  stage: lint
+  image: python:3.11-slim
+  before_script:
+    - pip install --quiet -r requirements.txt
+  script:
+    - python -c "
+        import bot, scheduler, database, handlers, claude_api, quiz, tts;
+        print('All imports OK')
+      "
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# ── Docker build & push ────────────────────────────────────────────────────────
+build:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+  script:
+    - docker build -t "$DOCKER_IMAGE" -t "$DOCKER_LATEST" .
+    - docker push "$DOCKER_IMAGE"
+    - docker push "$DOCKER_LATEST"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# ── Deploy (webhook / SSH) ─────────────────────────────────────────────────────
+# Раскомментируй нужный вариант и задай переменные в Settings → CI/CD → Variables
+deploy:
+  stage: deploy
+  image: alpine:3.19
+  before_script:
+    - apk add --no-cache curl
+  script:
+    # Вариант 1: Render deploy hook
+    # - curl -s -X POST "$RENDER_DEPLOY_HOOK"
+    #
+    # Вариант 2: SSH на сервер
+    # - apk add --no-cache openssh-client
+    # - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > /tmp/id_rsa
+    # - chmod 600 /tmp/id_rsa
+    # - ssh -i /tmp/id_rsa -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST"
+    #     "docker pull $DOCKER_LATEST && docker restart mira_bot"
+    - echo "Configure your deploy step above and remove this line"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+  environment:
+    name: production

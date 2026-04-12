@@ -118,7 +118,7 @@ async def save_quiz_result(user_id: int, score: int, total: int):
         await conn.execute("""
             INSERT INTO quiz_results (user_id, quiz_date, score, total)
             VALUES ($1, $2, $3, $4)
-            ON CONFLICT DO NOTHING
+            ON CONFLICT (user_id, quiz_date) DO NOTHING
         """, user_id, today, score, total)
 
         user = await conn.fetchrow("SELECT last_quiz_date, streak FROM users WHERE user_id = $1", user_id)

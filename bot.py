@@ -7,7 +7,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from handlers import router
 from scheduler import setup_scheduler
-from database import init_db
+from database import init_db, get_pool
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ async def main():
     scheduler = setup_scheduler(bot)
     scheduler.start()
 
-    # Health server для Render
+    # Health server для Render / GitLab
     app = web.Application()
     app.router.add_get("/", health)
     runner = web.AppRunner(app)
@@ -43,7 +43,14 @@ async def main():
     logger.info(f"Health server started on port {PORT}")
 
     logger.info("Bot started")
-    await dp.start_polling(bot)
+    try:
+        await dp.start_polling(bot)
+    finally:
+        scheduler.shutdown(wait=False)
+        pool = await get_pool()
+        await pool.close()
+        await runner.cleanup()
+        logger.info("Bot stopped gracefully")
 
 
 if __name__ == "__main__":
